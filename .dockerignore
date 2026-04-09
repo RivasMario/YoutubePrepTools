@@ -1,0 +1,11 @@
+.venv
+__pycache__
+*.pyc
+*.pt
+*.bin
+.git
+.gitignore
+streamlit.log
+*.log
+Test Files
+Docs

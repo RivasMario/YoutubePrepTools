@@ -5,12 +5,12 @@
   "min_clip": 0.5,
   "min_silent": 0.2,
   "sliders_enabled": [
-    1,
-    0,
-    0,
-    0,
-    0,
-    0
+    true,
+    false,
+    false,
+    false,
+    false,
+    false
   ],
   "slider_defaults": [
     -24,
@@ -20,5 +20,5 @@
     -24,
     -24
   ],
-  "model": "small"
+  "model": "large-v3"
 }

@@ -44,7 +44,7 @@ class clipCutter:
     def set_lead_in(self,lead_in):
         self.lead_in=lead_in
     def set_lead_out(self,lead_out):
-        self.lead_in=lead_out
+        self.lead_out=lead_out
     def set_min_clip_dur(self,min_clip_dur):
         self.min_clip_dur=min_clip_dur
     def set_min_silent_dur(self,min_silent_dur):
@@ -84,17 +84,18 @@ class clipCutter:
         self.status_queue.put({"percent":100,"state":"done"})
     def _export_audio(self,chan):
         if self.video_file_name is not None:
-            # sample test command, 
+            # sample test command,
             #ffmpeg -i .\ep6c1.mkv -bitexact -map 0:1 -acodec pcm_s16le -ar 22050 -ac 1 audio.wav
             audio_path=join(self.working_folder,"audio{}_{}.wav".format(uuid4(),chan))
-            cmd = 'ffmpeg -i "{}" -bitexact -map 0:{} -acodec pcm_s16le -ar 22050 -ac {} {}'.format(self.video_file_name,
-                                                                                                  chan,
+            cmd = 'ffmpeg -i "{}" -bitexact -map 0:a:{} -acodec pcm_s16le -ar 22050 -ac {} "{}"'.format(self.video_file_name,
+                                                                                                  chan-1,
                                                                                                   self.metadata.audio[chan-1].channels,
                                                                                                   audio_path)
-            
+
             startupinfo = None
             returnVals=Popen(cmd,stdout=PIPE, stderr=PIPE, shell=True).communicate()
             return audio_path
+            
     def _cut_audio(self):
         self.enabled_clips
         self.silent_thresh_list

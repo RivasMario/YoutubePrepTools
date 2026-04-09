@@ -1,0 +1,7 @@
+streamlit
+boto3
+numpy
+pandas
+scipy
+faster-whisper
+pyperclip

@@ -25,7 +25,7 @@ class FFProbe:
             '-show_streams',
             filename,
             ]
-        parsed_xml=ElementTree.fromstring(subprocess.check_output(cmd, shell=True))
+        parsed_xml=ElementTree.fromstring(subprocess.check_output(cmd, shell=False))
         self.audio=[]
         self.video=[]
         for streams in parsed_xml.findall("streams"):

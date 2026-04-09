@@ -184,7 +184,9 @@ if __name__=="__main__":
         try:
             name=split(folder)[-1]
             do_settings(cc)
-            files=glob(join(folder,"*.mkv"))
+            files = []
+            for ext in ("*.mkv", "*.mp4", "*.mov", "*.avi", "*.MKV", "*.MP4", "*.MOV", "*.AVI"):
+                files.extend(glob(join(folder, ext)))
             files.sort(key=getmtime)
             for file in files:
                 print(file)
