@@ -1,70 +1,113 @@
-# Youtube Video Publishing Tools
-This is a set of tools I put together to make youtube video publishing much easier. The tools help cut silence from video clips, transcribe an audio file to a Text file for youtube subtitles, and quickly and efficiently make chapters for your description with boiler plate social media links.
+# YouTube Prep Tools
 
-This project is Free and Open source, and is powered by other opensource projects. 
-## Introduction
-[![How this works](http://img.youtube.com/vi/npFae43ULP0/0.jpg)](https://youtu.be/npFae43ULP0 "Faster Youtube Video Publishing/Editing Tools using OpenAI and Davinci")
+A self-hosted web app for prepping YouTube videos: cuts silence and exports an EDL for your editor (DaVinci, Kdenlive, etc.), and transcribes audio with Whisper for subtitles or chapter notes.
 
-## installation
-To install this took you will first need to install FFMPEG. FFMEG is an opensource tool that allows for the minipulation of Video and Audio files. FFMPEG needs to be added to path, how you do that is explained in this video.
-[![How to install FFMPEG to path](http://img.youtube.com/vi/r1AtmY-RMyQ/0.jpg)](https://www.youtube.com/watch?v=r1AtmY-RMyQ "Video Title")
-Download the file from the latest release
-[latest release](https://github.com/RavinMaddHatter/YoutubePrepTools/releases/latest)
+Originally a Tkinter desktop tool by [RavinMaddHatter](https://github.com/RavinMaddHatter/YoutubePrepTools); this fork is a containerized Streamlit web app you can run on a home server (TrueNAS, Proxmox, any Docker host) and access from a browser.
 
-## Instructions
-This section is a basic walk through of the features
-### Video File Processing 
-To begin you will need to know the settings that drive the program. First the audio levels for what defines silent and what defines loud are cut off per channel using the sliders.
+## What it does
 
-![Audio Level Sliders](https://github.com/RavinMaddHatter/YoutubePrepTools/blob/main/Docs/Slider%20Highlighted.png?raw=true)
+- **Silence cutter** — Analyzes audio levels per channel, removes silent gaps, and exports a `.edl` you can drop straight into your NLE timeline.
+- **Whisper transcriber** — Transcribes audio with [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2 backend, runs on CPU). Supports `tiny`, `base`, `small`, `medium`, `large-v3`.
+- **Audio preprocessing** — Optional ffmpeg pipeline (highpass + loudnorm, optional aggressive denoise) for rough source recordings.
+- **Combined folder transcripts** — Stitch all transcripts in a folder into one file with optional chapter headers per source clip.
+- **Server-side file access** — Point it at a mounted `/data` directory; no need to upload multi-GB files through the browser.
+- **Browser uploads** — Up to 4 GB per file for smaller clips.
 
-Enable Tracks using the check box
+## Quick start (Docker)
 
-![Enable Check boxes](https://github.com/RavinMaddHatter/YoutubePrepTools/blob/main/Docs/Enabled%20highllighted.png?raw=true)
+Pull and run from GitHub Container Registry:
 
-In space is the amount of "quiet time" before the the first detected loud sound. Out time is the quiet time after the last detected loud sound in a section of video.
+```bash
+docker run -d --name yptools --restart unless-stopped \
+  -p 8501:8501 \
+  -v /path/to/your/videos:/data \
+  ghcr.io/rivasmario/youtubepreptools:latest
+```
 
-![Enable Check boxes](https://github.com/RavinMaddHatter/YoutubePrepTools/blob/main/Docs/in%20and%20out%20space%20highlighted.png?raw=true)
+Then open <http://localhost:8501>. Your videos will appear at `/data/...` inside the app.
 
-Min Clip Length is the length of time a "loud section" must be to be kept. Min Silent Duration is the minimum amount of time for a silent section to be deleted.
+## Deploying on a home server
 
-![Clip lengths](https://github.com/RavinMaddHatter/YoutubePrepTools/blob/main/Docs/Clip%20lenghts%20highlighted.png?raw=true)
+### TrueNAS SCALE
+1. Apps → Discover → **Custom App**
+2. Image: `ghcr.io/rivasmario/youtubepreptools:latest`
+3. Port mapping: container `8501` → host `8501`
+4. Storage: host path of your video dataset → container path `/data`
+5. Save and start, then browse to `http://<truenas-ip>:8501`
 
-Cut Clip applies the settings to a single video file and exports and EDL matching the video file name. A file browser will open for this. Cut Folder applies the cut process to all videos in the folder and creates 1 timeline with the foldername.
+### Proxmox
+Run inside an LXC or VM with Docker installed:
+```bash
+docker run -d --name yptools --restart unless-stopped \
+  -p 8501:8501 -v /path/to/videos:/data \
+  ghcr.io/rivasmario/youtubepreptools:latest
+```
 
-![execute cut process](https://github.com/RavinMaddHatter/YoutubePrepTools/blob/main/Docs/cut%20clip%20and%20cut%20folder.png?raw=true)
+### Mounting a remote SMB/NFS share into the container
+On a Linux Docker host (e.g. via Tailscale to your NAS):
+```bash
+sudo mount -t cifs //192.168.0.203/winset /mnt/winset -o username=nasuser
+docker run -d --name yptools -p 8501:8501 -v /mnt/winset:/data \
+  ghcr.io/rivasmario/youtubepreptools:latest
+```
 
-### Audio Transcription
-To automatically transcribe audio, the OpenAI whisper libary is used. To use that library a a model must be chosen. The larger the model, the longer processing and downloading will take. The smaller the model more likely there will be incorrect or failed words.
+## Using the app
 
-![Selecting Model](https://github.com/RavinMaddHatter/YoutubePrepTools/blob/main/Docs/model%20select%20highlighted.png?raw=true)
+### Sidebar settings
+- **Audio Thresholds (dB)** — enable channels and set the silent-cutoff level per channel.
+- **Timing Rules** — lead-in, lead-out, minimum clip length, minimum silent duration.
+- **Whisper Model** — pick model size. `large-v3` is best quality but slowest.
+- **Audio Preprocessing**
+  - *Normalize + clean audio* — safe for almost everything; fixes loudness and rumble.
+  - *Aggressive denoise* — only for muffled/noisy recordings; can hurt clean audio.
+- **Folder Transcription**
+  - *Combine into one file* — stitches all clip transcripts into a single file at the folder level.
+  - *Add chapter headers* — inserts `## filename` markers between sections.
 
-After a model is selected you use the Transcribe WAV button to browse for an audio file. This process may take several minutes, the progress bar does not update while transcribing.
+### Workflow
+1. Set your audio thresholds and timing rules in the sidebar.
+2. **Video Cutter** tab: enter a server path (e.g. `/data/my-project/`) or upload files.
+3. Click **Cut Single Clip (EDL)** or **Cut Folder (Merge to EDL)** → download the `.edl`.
+4. Import the EDL into DaVinci Resolve, Kdenlive, or any NLE that reads CMX3600.
+5. **Audio Transcriber** section: pick a model and transcribe a single file or a whole folder.
 
-![Browse for audio](https://github.com/RavinMaddHatter/YoutubePrepTools/blob/main/Docs/Transcribe%20highlighted.png?raw=true)
+## Building from source
 
-### Description tools
+```bash
+git clone https://github.com/RivasMario/YoutubePrepTools.git
+cd YoutubePrepTools
+docker build -t youtubepreptools:latest .
+docker run -d -p 8501:8501 -v /path/to/videos:/data youtubepreptools:latest
+```
 
-The description tools allows for the keeping of boilerplate data for your youtube description. It is intended for your social media, and general information you typically copy and paist between videos.
+### Local dev (no Docker)
+Requires Python 3.11+ and `ffmpeg` on the host.
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+streamlit run app.py
+```
 
-![Description tools](https://github.com/RavinMaddHatter/YoutubePrepTools/blob/main/Docs/Template%20Description%20highlighted.png?raw=true)
+## Project layout
 
-After exporting the markers from the edit index as CSV (watch intro video for how to do that) the markers can be driectly converted to chapters in the description and appended to the template with the "Makers to clipboard" button.
+| File | Purpose |
+| --- | --- |
+| `app.py` | Streamlit web UI |
+| `cutter.py` | Silence-detection and EDL generation |
+| `openai_translator.py` | Whisper transcription wrapper (faster-whisper) |
+| `access_ffprobe.py` | ffprobe metadata parser |
+| `aws_translator.py` | AWS Translate helper (optional) |
+| `youtubePrep.py` | Legacy Tkinter desktop entrypoint (kept for reference) |
+| `Dockerfile` | Container image definition |
+| `init.sh` | Container entrypoint (starts Streamlit) |
+| `requirements.txt` | Python dependencies |
+| `youtubeDescription.json` | Saved settings + boilerplate description text |
 
-![Markers to clipboard](https://github.com/RavinMaddHatter/YoutubePrepTools/blob/main/Docs/Makers%20highlighted.png?raw=true)
+## Credits
 
-### Save and exit. 
+Original project: [RavinMaddHatter/YoutubePrepTools](https://github.com/RavinMaddHatter/YoutubePrepTools)
 
-The save tool saves the current settings, the exit button closes the program.
-
-## social media
-
-
-[Discord](https://discord.com/invite/M7MHtUab2r)
-
-
-[Youtube](https://www.youtube.com/channel/UCKHWmRRTGUc0Ssgd3SarD5g)
-
-If you would like tip the devloper of the tool,
-
-[ko-fi](https://ko-fi.com/ravinmaddhatter)
+- [Discord](https://discord.com/invite/M7MHtUab2r)
+- [YouTube](https://www.youtube.com/channel/UCKHWmRRTGUc0Ssgd3SarD5g)
+- [ko-fi](https://ko-fi.com/ravinmaddhatter) — tip the original developer
