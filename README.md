@@ -7,6 +7,8 @@ Originally a Tkinter desktop tool by [RavinMaddHatter](https://github.com/RavinM
 ## What it does
 
 - **Silence cutter** — Analyzes audio levels per channel, removes silent gaps, and exports a `.edl` you can drop straight into your NLE timeline.
+- **Native Video Extraction** — Automatically cuts and extracts individual video clips using `ffmpeg` based on silence gaps, completely bypassing the need for an NLE.
+- **Auto-Concatenation** — Automatically stitches all the extracted clips into a single fluff-free VOD master file.
 - **Whisper transcriber** — Transcribes audio with [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2 backend, runs on CPU). Supports `tiny`, `base`, `small`, `medium`, `large-v3`.
 - **Audio preprocessing** — Optional ffmpeg pipeline (highpass + loudnorm, optional aggressive denoise) for rough source recordings.
 - **Combined folder transcripts** — Stitch all transcripts in a folder into one file with optional chapter headers per source clip.
@@ -69,7 +71,8 @@ docker run -d --name yptools -p 8501:8501 -v /mnt/winset:/data \
 2. **Video Cutter** tab: enter a server path (e.g. `/data/my-project/`) or upload files.
 3. Click **Cut Single Clip (EDL)** or **Cut Folder (Merge to EDL)** → download the `.edl`.
 4. Import the EDL into DaVinci Resolve, Kdenlive, or any NLE that reads CMX3600.
-5. **Audio Transcriber** section: pick a model and transcribe a single file or a whole folder.
+5. **Alternative Extraction Workflow (No NLE Required)**: Instead of generating an EDL, click **Extract Single Clip Videos (FFmpeg)** or **Extract Folder Videos (FFmpeg)** to let the server automatically split out the individual clips and concatenate them into a final VOD file right alongside the originals.
+6. **Audio Transcriber** section: pick a model and transcribe a single file or a whole folder.
 
 ## Building from source
 
