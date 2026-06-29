@@ -169,7 +169,39 @@ def cut_folder_process(queue, folder):
         queue.put({"percent": 100, "state": f"Error: {e}"})
         cc._cleanup()
 
+def extract_clip_process(queue, video_file):
+    name = Path(video_file).stem
+    head, tail = split(video_file)
+    cc = cutter.clipCutter(queue)
+    try:
+        do_settings(cc)
+        cc.add_cut_video_to_timeline(video_file)
+        vod_file = cc.export_video_clips(head)
+        cc._cleanup()
+        queue.put({"percent": 100, "state": "done", "file": vod_file})
+    except Exception as e:
+        queue.put({"percent": 100, "state": f"Error: {e}"})
+        cc._cleanup()
+
+def extract_folder_process(queue, folder):
+    cc = cutter.clipCutter(queue)
+    try:
+        do_settings(cc)
+        files = []
+        for ext in ("*.mkv", "*.mp4", "*.mov", "*.avi", "*.MKV", "*.MP4", "*.MOV", "*.AVI"):
+            files.extend(glob(join(folder, ext)))
+        files.sort(key=getmtime)
+        for file in files:
+            cc.add_cut_video_to_timeline(file)
+        vod_file = cc.export_video_clips(folder)
+        cc._cleanup()
+        queue.put({"percent": 100, "state": "done", "file": vod_file})
+    except Exception as e:
+        queue.put({"percent": 100, "state": f"Error: {e}"})
+        cc._cleanup()
+
 col1, col2 = st.columns(2)
+col3, col4 = st.columns(2)
 with col1:
     if st.button("Cut Single Clip (EDL)"):
         if os.path.isfile(input_path):
@@ -186,6 +218,24 @@ with col2:
             if result_file and os.path.exists(result_file):
                 with open(result_file, "r") as f:
                     st.download_button(label="⬇️ Download Merged EDL", data=f.read(), file_name=os.path.basename(result_file))
+        else:
+            st.error("Provided path is not a directory.")
+
+with col3:
+    if st.button("Extract Single Clip Videos (FFmpeg)"):
+        if os.path.isfile(input_path):
+            result_file = run_task_with_progress(extract_clip_process, input_path)
+            if result_file and os.path.exists(result_file):
+                st.success(f"Successfully extracted clips and VOD to {os.path.dirname(result_file)}")
+        else:
+            st.error("Provided path is not a file.")
+
+with col4:
+    if st.button("Extract Folder Videos (FFmpeg)"):
+        if os.path.isdir(input_path):
+            result_file = run_task_with_progress(extract_folder_process, input_path)
+            if result_file and os.path.exists(result_file):
+                st.success(f"Successfully extracted clips and VOD to {os.path.dirname(result_file)}")
         else:
             st.error("Provided path is not a directory.")
 

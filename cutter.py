@@ -214,6 +214,50 @@ class clipCutter:
         timestamp="{:02d}:{:02d}:{:02d}:{:02d}".format(hours,minutes,seconds,frames)
         return timestamp
 
+    def export_video_clips(self, output_dir=None):
+        import subprocess, os
+        self.status_queue.put({"percent": 90, "state": "Extracting Video Clips"})
+        if output_dir is None:
+            output_dir = os.path.dirname(self.clips[0]["file_name"]) if self.clips else "."
+            
+        clip_files = []
+        for i, clip in enumerate(self.clips):
+            start = clip["in"]
+            end = clip["out"]
+            video_file = clip["file_name"]
+            out_file = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(video_file))[0]}_Clip_{i+1:02d}.mkv")
+            clip_files.append(out_file)
+            
+            self.status_queue.put({"percent": 90 + int((i/len(self.clips))*8), "state": f"Extracting Clip {i+1}"})
+            
+            cmd = [
+                "ffmpeg", "-y", "-i", video_file,
+                "-ss", str(start), "-to", str(end),
+                "-c", "copy", out_file
+            ]
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+        if not clip_files:
+            return None
+            
+        self.status_queue.put({"percent": 98, "state": "Concatenating Clips to VOD"})
+        list_file = os.path.join(output_dir, "concat_list.txt")
+        with open(list_file, "w") as f:
+            for c in clip_files:
+                f.write(f"file '{os.path.basename(c)}'\n")
+                
+        vod_file = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(self.clips[0]['file_name']))[0]}_VOD.mkv")
+        concat_cmd = [
+            "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+            "-i", list_file,
+            "-c", "copy",
+            vod_file
+        ]
+        # Run concat in the output_dir so relative paths in list_file work perfectly
+        subprocess.run(concat_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=output_dir)
+        os.remove(list_file)
+        return vod_file
+
 
 
 
